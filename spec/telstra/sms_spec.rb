@@ -1,14 +1,32 @@
 require 'spec_helper'
 
+TELSTRA_API_KEY = ENV['TELSTRA_API']
+TELSTRA_API_SECRET = ENV['TELSTRA_SECRET']
+TELSTRA_TEST_NUMBER = ENV['TELSTRA_TEST_NUMBER'] || '0425616397'
+
 describe Telstra::SMS do
 
   describe "Sending SMS" do
-    let(:telstra_api){ Telstra::SMS.new(ENV['TELSTRA_API'], ENV['TELSTRA_SECRET']) }
+    let(:telstra_api){ Telstra::SMS.new(TELSTRA_API_KEY, TELSTRA_API_SECRET) }
     
-    describe "#generate_token" do
+    describe "#token_expired?" do
+      it 'returns a boolean' do
+        VCR.use_cassette('token') do
+          expired = telstra_api.token_expired?
+          expect(expired).to eq(true)
+
+          telstra_api.token
+
+          expired = telstra_api.token_expired?
+          expect(expired).to eq(false)
+        end
+      end
+    end
+
+    describe "#token" do
       it 'returns token' do
-        VCR.use_cassette('generate_token') do
-          response = telstra_api.generate_token
+        VCR.use_cassette('token') do
+          response = telstra_api.token
           expect(response).kind_of?(String)
         end
       end
@@ -17,7 +35,7 @@ describe Telstra::SMS do
     describe "#send_sms" do
       it 'returns a success' do
         VCR.use_cassette('send_sms') do
-          response = telstra_api.send_sms(to: '0425616397', body: 'Hello from Telstra!')
+          response = telstra_api.send_sms(to: TELSTRA_TEST_NUMBER, body: 'Hello from Telstra!')
           expect(response).kind_of?(Hash)
           expect(response.has_key?('messageId')).to eq true
         end
@@ -27,7 +45,7 @@ describe Telstra::SMS do
     describe "get_message_status" do
       it 'returns message status' do
         VCR.use_cassette('get_message_status') do
-          sms_response = telstra_api.send_sms(to: '0425616397', body: 'Hello from Telstra!')
+          sms_response = telstra_api.send_sms(to: ENV['TELSTRA_TEST_NUMBER'], body: 'Hello from Telstra!')
           message_id = sms_response['messageId']
           response = telstra_api.get_message_status(message_id)
 
@@ -44,7 +62,7 @@ describe Telstra::SMS do
       ## Can a response be simulated?
       it 'returns message response' do
         VCR.use_cassette('get_message_response') do
-          sms_response = telstra_api.send_sms(to: '0425616397', body: 'Hello from Telstra!')
+          sms_response = telstra_api.send_sms(to: ENV['TELSTRA_TEST_NUMBER'], body: 'Hello from Telstra!')
           message_id = sms_response['messageId']
           response = telstra_api.get_message_response(message_id)
 
